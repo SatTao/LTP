@@ -174,4 +174,5 @@ boolean checkReload(){
   else {return false;}
 }
 
+// This is a test line to determine whether Git notices small changes in local repositories.
 // END
