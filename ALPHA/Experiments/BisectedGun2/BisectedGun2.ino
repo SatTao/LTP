@@ -176,3 +176,29 @@ boolean checkReload(){
 
 // This is a test line to determine whether Git notices small changes in local repositories.
 // END
+
+int buildNECCommand(byte device, byte command){
+
+
+  // TODO: test device and command are in range.
+
+  int output = 0;
+  byte notdevice = ~device;
+  byte notcommand = ~command;
+
+  output |= device;
+  output <<= 8;
+  output |= notdevice;
+  output <<= 8;
+  output |= command;
+  output <<= 8;
+  output |= notcommand;
+  output <<= 8;
+
+  // TODO: Check this produces something reasonable for debugging
+
+  // TODO: Build a decoder for the receiver, and test it. Can do partial matches as near misses.
+}
+
+
+}
