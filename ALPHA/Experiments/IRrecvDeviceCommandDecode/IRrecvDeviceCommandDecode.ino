@@ -22,7 +22,7 @@ void setup()
 
 void loop() {
   if (irrecv.decode(&results)) {
-    c = 0; d = 0;
+    byte c = 0; byte d = 0;
     boolean ok = extractNEC(&d, &c, results.value);
     Serial.println(results.value, HEX);
     Serial.print("OK?:\t\t"); Serial.println(ok);
