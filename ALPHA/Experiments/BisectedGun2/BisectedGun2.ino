@@ -34,6 +34,8 @@ int roundsRemaining = 12;
 
 int magsRemaining = 6;
 
+unsigned long myFireCode;
+
 // Trigger logic
 volatile boolean botherTrigger = false;
 
@@ -46,6 +48,9 @@ void setup() {
   Serial.begin(9600);
   delay(500);
   Serial.println("SETUP");
+  Serial.println("Building local NEC fire code, incorporating device 8 command 234");
+  myFireCode = buildNECCommand(8,234);
+  Serial.println(myFireCode, HEX);
   
   pinMode(IRPin, OUTPUT); digitalWrite(IRPin, LOW);
   
@@ -174,15 +179,17 @@ boolean checkReload(){
   else {return false;}
 }
 
-// This is a test line to determine whether Git notices small changes in local repositories.
-// END
+unsigned long buildNECCommand(byte device, byte command){
 
-int buildNECCommand(byte device, byte command){
+  // Device and command are 8 bits -> 0 to 256 are valid values
 
+  if (device < 0 | command < 0 | device > 256 | command > 256){
+    return 0;
+  }
 
-  // TODO: test device and command are in range.
+  // Output string format (after the header) is device/~device/command/~command
 
-  int output = 0;
+  unsigned long output = 0;
   byte notdevice = ~device;
   byte notcommand = ~command;
 
@@ -193,12 +200,12 @@ int buildNECCommand(byte device, byte command){
   output |= command;
   output <<= 8;
   output |= notcommand;
-  output <<= 8;
 
-  // TODO: Check this produces something reasonable for debugging
+  Serial.print("Device was\t"); Serial.println(device, BIN); 
+  Serial.print("Command was\t"); Serial.println(command, BIN);
+  Serial.print("Output string is:\t"); Serial.println(output, BIN);
+  
+  return output;
 
-  // TODO: Build a decoder for the receiver, and test it. Can do partial matches as near misses.
 }
-
-
-}
+// End

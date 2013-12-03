@@ -22,8 +22,12 @@ void setup()
 
 void loop() {
   if (irrecv.decode(&results)) {
-    PrintDetailsOfSony(results.value);
+    c = 0; d = 0;
+    boolean ok = extractNEC(&d, &c, results.value);
     Serial.println(results.value, HEX);
+    Serial.print("OK?:\t\t"); Serial.println(ok);
+    Serial.print("Device code:\t"); Serial.println(d);
+    Serial.print("Command code:\t"); Serial.println(c);
     irrecv.resume(); // Receive the next value
   }
 }
@@ -60,4 +64,29 @@ void PrintDetailsOfSony(unsigned long input){
   
   Serial.print("Device code:\t"); Serial.println(drev);
   Serial.print("Command code:\t"); Serial.println(crev);
+}
+
+boolean extractNEC(byte *device, byte *command, unsigned long code){
+
+  byte dev = code >> 24;
+  byte ndev = (code << 8) >> 24;
+  byte com = (code << 16) >> 24;
+  byte ncom = (code << 24) >> 24;
+  
+  if (((com & ncom) == 0) && ((dev & ndev) == 0)){ // Everything is as it should be
+    *device = dev; *command = com;
+    return true;
+  }
+  else if (((dev & ndev) == 0) && ((com & ncom) != 0)){ // Mangled command code from recognised device
+    *device = dev; *command = 0; 
+    return false;
+  }
+  else if (((dev & ndev) != 0) && ((com & ncom) == 0)){ // Mangled device code for a recognised command
+    *command = com; *device = 0; 
+    return false;
+  }
+  else {
+    *command = 0; *device = 0;
+    return false;
+  }
 }
