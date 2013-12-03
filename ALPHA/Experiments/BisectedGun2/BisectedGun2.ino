@@ -96,7 +96,7 @@ void fire(){
     
     // Fire the weapon
     //for (int t=0;t<3;t++) {
-      irsend.sendSony(0xa90, 12); // Sony TV power code for now TODO: Change slightly
+      irsend.sendNEC(myFireCode, 32); // NEC code, TODO: make unique by using values held in eeprom
       delay(40);
     //}
     
