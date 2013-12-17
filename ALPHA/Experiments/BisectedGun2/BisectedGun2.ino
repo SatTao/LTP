@@ -31,6 +31,25 @@ byte MAG_RELOAD[] = {0, B10000001, B11000011, B11100111, B11111111, B01111110, B
 byte MAG_OUT[] = {B00000011};
 byte ALL_OUT[] = {B10000000};
 
+// Character codes for common anode 7 segment, translated into vertical controller connections.
+
+byte ZERO = B01000010;
+byte ONE = B11111010;
+byte TWO = B00110111;
+byte THREE = B00110010;
+byte FOUR = B10011010;
+byte FIVE = B00010110;
+byte SIX = B00000110;
+byte SEVEN = B11110010;
+byte EIGHT = B00000010;
+byte NINE = B00010010;
+
+byte DP = B11111101;
+
+byte HORIZ = B00110111;
+byte VERT = B11001010;
+byte DASH = B10111111;
+
 // Global variables
 
 int roundsPerMag = 12;
@@ -164,6 +183,8 @@ void setLED(byte output){
   shiftOut(Serial595Pin, clockPin, MSBFIRST, output);   
   digitalWrite(latchPin, HIGH);
 }
+
+void set7seg(byte output){} // Placeholder
 
 void animate(byte *ACTIVITY_CODE, int animation_length, int animation_delay){ // Set LED bargraph to animate the event coded by ACTIVITY_CODE
   // Serial.println("Animating LED output");
