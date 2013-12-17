@@ -14,6 +14,10 @@ int reloadPin = 7; // Reload and trigger pins must be pulled high as input, and 
 
 int vibePin = 9;
 
+// Output pin for sound, activates cheap sound card, hold low!
+
+int soundPin = 8;
+
 // LED Bargraph setup (common cathode)
 
 int Serial595Pin = 4;
@@ -58,6 +62,7 @@ void setup() {
   pinMode(reloadPin, INPUT); digitalWrite(reloadPin, HIGH);
   
   pinMode(vibePin, OUTPUT); digitalWrite(vibePin, LOW);
+  pinMode(soundPin, OUTPUT); digitalWrite(soundPin, LOW);
   
   pinMode(latchPin, OUTPUT); // Let these float for a while, not v important
   pinMode(clockPin, OUTPUT);
@@ -91,16 +96,15 @@ void fire(){
     // Handle the trigger logic
     roundsRemaining--;
     
+    // Make a noise
+    digitalWrite(soundPin, HIGH);
+    
     // Make a vibration
     digitalWrite(vibePin, HIGH);
     
     // Fire the weapon
-    //for (int t=0;t<3;t++) {
-      irsend.sendNEC(myFireCode, 32); // NEC code, TODO: make unique by using values held in eeprom
-      delay(40);
-    //}
-    
-    // Make a noise
+    irsend.sendNEC(myFireCode, 32); // NEC code, TODO: make unique by using values held in eeprom
+    delay(40);
     
     // Cancel the vibration
     digitalWrite(vibePin, LOW);
@@ -108,6 +112,10 @@ void fire(){
     // Clear the status bar
     setLED(0);    
     delay(100);
+    
+    // Cancel the noise
+    
+    digitalWrite(soundPin, LOW);
     
     // Check rounds remaining and do the reload logic    
     if (roundsRemaining){reloadChamber();}
