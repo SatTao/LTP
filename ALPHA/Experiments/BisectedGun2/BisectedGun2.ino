@@ -4,12 +4,15 @@
 
 // Pin definitions
 
+int armedPin = A3;
+
 // Trigger, reload and IR pins. IR must be on pin 3 to work with the IR library, and it uses interrupt timers.
  
 int triggerPin = 2; // Does not use the interrupt
 int IRPin = 3; // Connected directly to the output IR diode
 int reloadPin = 7; // Reload and trigger pins must be pulled high as input, and connected through their switches to ground.
 
+int reloadLedPin = 10;
 // Output pin for vibration (HOLD LOW!)
 
 int vibePin = 9;
@@ -26,12 +29,14 @@ int clockPin = 6;
 
 // Activity codes for LED bargraph animation
 
-byte CHAMBER_RELOAD[] = {0, B00000001, B00000011, B00000111, B00001111, B00011111, B00111111, B01111111, B11111111};
-byte MAG_RELOAD[] = {0, B10000001, B11000011, B11100111, B11111111, B01111110, B00111100, B00011000, 0, 1, 0};
-byte MAG_OUT[] = {B00000011};
-byte ALL_OUT[] = {B10000000};
+//byte CHAMBER_RELOAD[] = {0, B00000001, B00000011, B00000111, B00001111, B00011111, B00111111, B01111111, B11111111};
+//byte MAG_RELOAD[] = {0, B10000001, B11000011, B11100111, B11111111, B01111110, B00111100, B00011000, 0, 1, 0};
+//byte MAG_OUT[] = {B00000011};
+//byte ALL_OUT[] = {B10000000};
 
 // Character codes for common anode 7 segment, translated into vertical controller connections.
+
+
 
 byte ZERO = B01000010;
 byte ONE = B11111010;
@@ -45,15 +50,25 @@ byte EIGHT = B00000010;
 byte NINE = B00010010;
 
 byte DP = B11111101;
+byte OFF = B11111111;
 
 byte HORIZ = B00110111;
 byte VERT = B11001010;
 byte DASH = B10111111;
 
+// Activity codes for LED 7segment animation
+
+byte NUMBERS[] = {ZERO, ONE, TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE};
+
+byte CHAMBER_RELOAD[] = {OFF, DASH, VERT, HORIZ, EIGHT, OFF};
+byte MAG_RELOAD[] = {OFF, DASH, VERT, HORIZ, EIGHT, OFF}; // TODO Make this better
+byte MAG_OUT[] = {ZERO};
+byte ALL_OUT[] = {DASH};
+
 // Global variables
 
-int roundsPerMag = 12;
-int roundsRemaining = 12;
+int roundsPerMag = 9; // ATTENTION! Cannot be greater than 9 until reload logic can handle 2 digits on display
+int roundsRemaining = 9;
 
 int magsRemaining = 6;
 
@@ -68,6 +83,9 @@ volatile boolean botherReload = false;
 IRsend irsend; // IRSend library implementation
 
 void setup() {
+  delay(1000);
+  pinMode(armedPin, OUTPUT);
+  digitalWrite(armedPin, HIGH); // Indicates device active
   Serial.begin(9600);
   delay(500);
   Serial.println("SETUP");
@@ -87,7 +105,9 @@ void setup() {
   pinMode(clockPin, OUTPUT);
   pinMode(Serial595Pin, OUTPUT);
 
+  digitalWrite(armedPin, LOW);
   reloadChamber(); // sets botherTrigger true
+  digitalWrite(armedPin, HIGH);
 
   Serial.println("SETUP COMPLETE!");
 }
@@ -129,7 +149,7 @@ void fire(){
     digitalWrite(vibePin, LOW);
     
     // Clear the status bar
-    setLED(0);    
+    setLED(OFF);    
     delay(100);
     
     // Cancel the noise
@@ -145,7 +165,8 @@ void fire(){
 void reloadChamber(){ // Only gets called if there's definitely a remaining round
   // Show the chamber reload animation in the status 
   Serial.println("RELOAD CHAMBER ROUTINE");
-  animate(CHAMBER_RELOAD,9,70);
+  animate(CHAMBER_RELOAD,6,70);
+  if(roundsRemaining < 10) {setLED{NUMBERS[roundsRemaining]};}
   botherTrigger=true;
 }
 
@@ -161,10 +182,13 @@ void reloadMag(){
     digitalWrite(vibePin, HIGH);
     
     // Show the mag reload animation
-    animate(MAG_RELOAD,11,70);
+    animate(MAG_RELOAD,6,70);
     
     // Cancel the vibration
     digitalWrite(vibePin, LOW);
+
+    if(magsRemaining < 10) {setLED{NUMBERS[magsRemaining]};}
+    delay(200);
     
     // Handle the reload logic
     roundsRemaining=roundsPerMag;
@@ -173,11 +197,12 @@ void reloadMag(){
   else {
     // Give a signal there's no juice left
     animate(ALL_OUT,1,10);
+    digitalWrite(armedPin, LOW);
     // DO NOT set any bother variables true here, result is that main loop continues indefintely.
   }
 }
 
-void setLED(byte output){
+void setLED(byte output){ // This writes the output verbatim to the 595 - you need to worry about inversion and segment mapping.
   digitalWrite(latchPin, LOW);
   delay(5);
   shiftOut(Serial595Pin, clockPin, MSBFIRST, output);   
