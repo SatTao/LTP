@@ -36,8 +36,6 @@ int clockPin = 6;
 
 // Character codes for common anode 7 segment, translated into vertical controller connections.
 
-
-
 byte ZERO = B01000010;
 byte ONE = B11111010;
 byte TWO = B00110111;
@@ -66,6 +64,8 @@ byte MAG_OUT[] = {ZERO};
 byte ALL_OUT[] = {DASH};
 
 // Global variables
+
+unsigned long reloadflash;
 
 int roundsPerMag = 9; // ATTENTION! Cannot be greater than 9 until reload logic can handle 2 digits on display
 int roundsRemaining = 9;
@@ -109,6 +109,7 @@ void setup() {
   reloadChamber(); // sets botherTrigger true
   digitalWrite(armedPin, HIGH);
 
+  reloadflash = millis();
   Serial.println("SETUP COMPLETE!");
 }
 
@@ -120,8 +121,13 @@ void loop() {
     }
   }
   if (botherReload){
+    if (millis() - reloadflash > 500) { // Flash the reload button
+    digitalWrite(reloadLedPin, !digitalRead(reloadLedPin));
+    reloadflash = millis();
+    } 
     if (checkReload()){
       botherReload = false;
+      digitalWrite(reloadLedPin, LOW);
       reloadMag();
     }
   }
@@ -166,7 +172,7 @@ void reloadChamber(){ // Only gets called if there's definitely a remaining roun
   // Show the chamber reload animation in the status 
   Serial.println("RELOAD CHAMBER ROUTINE");
   animate(CHAMBER_RELOAD,6,70);
-  if(roundsRemaining < 10) {setLED{NUMBERS[roundsRemaining]};}
+  if(roundsRemaining < 10) {setLED(NUMBERS[roundsRemaining]);}
   botherTrigger=true;
 }
 
@@ -187,7 +193,7 @@ void reloadMag(){
     // Cancel the vibration
     digitalWrite(vibePin, LOW);
 
-    if(magsRemaining < 10) {setLED{NUMBERS[magsRemaining]};}
+    if(magsRemaining < 10) {setLED(NUMBERS[magsRemaining]);}
     delay(200);
     
     // Handle the reload logic
