@@ -1,2 +1,2 @@
-C:\Users\User\Documents\Arduino\arduino-1.0.1\hardware/tools/avr/bin/avrdude -CC:\Users\User\Documents\Arduino\arduino-1.0.1\hardware/tools/avr/etc/avrdude.conf -v -v -v -v -patmega328p -cusbasp -Pusb -Uflash:w:C:\Users\User\AppData\Local\Temp\build9027045451241972002.tmp\Blink.cpp.hex:i -U lfuse:w:0xff:m -U hfuse:w:0xde:m -U efuse:w:0x05:m
+C:\Users\User\Documents\Arduino\arduino-1.0.1\hardware/tools/avr/bin/avrdude -CC:\Users\User\Documents\Arduino\arduino-1.0.1\hardware/tools/avr/etc/avrdude.conf -v -v -v -v -patmega328p -cusbasp -Pusb -Uflash:w:C:\Users\User\AppData\Local\Temp\build5320362527213323824.tmp\BisectedGun2.cpp.hex:i -U lfuse:w:0xff:m -U hfuse:w:0xde:m -U efuse:w:0x05:m
 

@@ -13,6 +13,7 @@ int IRPin = 3; // Connected directly to the output IR diode
 int reloadPin = 7; // Reload and trigger pins must be pulled high as input, and connected through their switches to ground.
 
 int reloadLedPin = 10;
+
 // Output pin for vibration (HOLD LOW!)
 
 int vibePin = 9;
@@ -38,7 +39,7 @@ int clockPin = 6;
 
 byte ZERO = B01000010;
 byte ONE = B11111010;
-byte TWO = B00110111;
+byte TWO = B00100011;
 byte THREE = B00110010;
 byte FOUR = B10011010;
 byte FIVE = B00010110;
@@ -85,6 +86,7 @@ IRsend irsend; // IRSend library implementation
 void setup() {
   delay(1000);
   pinMode(armedPin, OUTPUT);
+  
   digitalWrite(armedPin, HIGH); // Indicates device active
   Serial.begin(9600);
   delay(500);
@@ -104,6 +106,8 @@ void setup() {
   pinMode(latchPin, OUTPUT); // Let these float for a while, not v important
   pinMode(clockPin, OUTPUT);
   pinMode(Serial595Pin, OUTPUT);
+  
+  pinMode(reloadLedPin, OUTPUT);
 
   digitalWrite(armedPin, LOW);
   reloadChamber(); // sets botherTrigger true
@@ -211,7 +215,7 @@ void reloadMag(){
 void setLED(byte output){ // This writes the output verbatim to the 595 - you need to worry about inversion and segment mapping.
   digitalWrite(latchPin, LOW);
   delay(5);
-  shiftOut(Serial595Pin, clockPin, MSBFIRST, output);   
+  shiftOut(Serial595Pin, clockPin, LSBFIRST, output);   
   digitalWrite(latchPin, HIGH);
 }
 
