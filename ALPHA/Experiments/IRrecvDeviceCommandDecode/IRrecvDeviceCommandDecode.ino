@@ -32,40 +32,6 @@ void loop() {
   }
 }
 
-void PrintDetailsOfSony(unsigned long input){
-  
-  // input is a long number from the IRremote library. At the far end of it is the device code.
-
-  unsigned long dinput = input << 27;
-  dinput >>= 27; // Isolates the device code on the LSB side: 000........ddddd
-  
-  unsigned long cinput = input >> 5;
-  cinput <<= 25;
-  cinput >>= 25; // Isolates the command code on the LSB side: 000........ccccccc
-  
-  
-  // Reverse the device code
-  byte drev = 0;
-  for(int i=0;i<5;i++){
-    drev <<= 1;
-    drev += dinput & 1;
-    dinput >>= 1;
-  }
-  
-  // Reverse the command code
-  byte crev = 0;
-  for(int i=0;i<7;i++){
-    crev <<= 1;
-    crev += cinput & 1;
-    cinput >>= 1;
-  }
-  
-  // print them
-  
-  Serial.print("Device code:\t"); Serial.println(drev);
-  Serial.print("Command code:\t"); Serial.println(crev);
-}
-
 boolean extractNEC(byte *device, byte *command, unsigned long code){
 
   byte dev = code >> 24;
@@ -74,19 +40,29 @@ boolean extractNEC(byte *device, byte *command, unsigned long code){
   byte ncom = (code << 24) >> 24;
   
   if (((com & ncom) == 0) && ((dev & ndev) == 0)){ // Everything is as it should be
-    *device = dev; *command = com;
+    *device = reverse(dev); *command = reverse(com);
     return true;
   }
   else if (((dev & ndev) == 0) && ((com & ncom) != 0)){ // Mangled command code from recognised device
-    *device = dev; *command = 0; 
+    *device = reverse(dev); *command = 0; 
     return false;
   }
   else if (((dev & ndev) != 0) && ((com & ncom) == 0)){ // Mangled device code for a recognised command
-    *command = com; *device = 0; 
+    *command = reverse(com); *device = 0; 
     return false;
   }
   else {
     *command = 0; *device = 0;
     return false;
   }
+}
+
+byte reverse(byte input){
+  byte rev = 0;
+    for(int i=0;i<8;i++){
+      rev <<= 1;
+      rev += input & 1;
+      input >>= 1;
+  }
+  return rev;
 }
