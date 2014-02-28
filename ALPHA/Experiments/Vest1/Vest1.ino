@@ -57,7 +57,7 @@ int team = 0;
 
 int program = 0; // 0: Null, 1: constant, 2: crossfade, 3: pulse
 int program_ahead = 0; // Same as above
-int repeats = 0; // 0: unlimited, 1-N: number
+int repeats = -1; // -1: unlimited 0: ready for next program, 1-N: number
 int repeats_ahead; // behaviour is to go Null program after _ahead is completed, if this is non-zero.
 byte const_col[] = BLACK;
 byte const_col_ahead[] = BLACK;
@@ -69,11 +69,17 @@ byte pulse_from[] = BLACK;
 byte pulse_from_ahead[] = BLACK;
 byte pulse_to[] = BLACK;
 byte pulse_to_ahead[] = BLACK;
-int steps = 1; // How many steps to perform crossfades/pulses in
+int steps = 1; // How many steps to perform crossfades/pulses in.
+int step_count = 0; // How far are we in the program already.
 int steps_ahead = 1;
 int millis_per_step = 10; // How many milliseconds per step in crossfades/pulses
 int millis_per_step_ahead = 10; // So intended program time is repeats*steps*millis_per_step
 int pulse_stage = 0; // For use by pulse program. Indicates whether we're rising (0) or fading (1)
+
+long int systime; // Keep track of lighting steps by looking at system time.
+
+boolean update_flag = false; // True if there's an update to the lighting program.
+// Need this to make sure that lighting program values aren't changed during a lighting cycle, because the IRRECV interrupts.
 
 // NOTE pins 0 and 1 are hardcoded as serial comms: we will use them as such, eventually.
 
@@ -85,9 +91,13 @@ void setup()
   pinMode(left_green, OUTPUT);
   pinMode(left_blue, OUTPUT);
 
+  pinMode(RECV_PIN, INPUT);
+
   delay(1000);
 
+  systime = millis();
   irrecv.enableIRIn(); // Start the receiver
+  Serial.println("STARTUP");
 }
 
 void loop() {
@@ -95,15 +105,32 @@ void loop() {
 
 	// TODO: Include lighting control. Team colours, hit indications, armed indication, admin data received, etc
 
+	if (program && (millis() - systime >= millis_per_step)) { // If there is a lighting program running at the moment, and the timer indicates it.
+
+		if (repeats == 0){
+			bump_ahead();
+		}
+		else {
+			switch(program){ // TODO
+				case 1: break; //constant
+				case 2: break; //crossfade
+				case 3: break; //pulse
+				default: break; // Do nothing if the program is not recognised.
+			}
+		}
+
+	}
+
 	// TODO: Store hits info in sensible format.
 
 
 	if (irrecv.decode(&results)) {
 		byte c = 0; byte d = 0;
-                Serial.println("HIT");
+                Serial.println("ADMIN HIT");
 		if (extractNEC(&d, &c, results.value)) {
 			Serial.println(results.value, HEX);
 			if (d==0) { // Then this is a system message
+				// TODO: Add system hit indication of state
 				switch (c) {
 					case 20: printState(); break; // MENU button, print out the state of the device.
 					case 13: toggleArmed(); break; // POWER button, toggle armed.
@@ -116,7 +143,7 @@ void loop() {
 				}
 			}
 			else { // This is a hit from another gun
-				// TODO: game logic
+				// TODO: game logic and game hit indication of state
 			}
 		}
 		irrecv.resume(); // Receive the next value
@@ -196,3 +223,22 @@ void setcol(byte *col){
   analogWrite(left_blue, col[2]);
 }
 
+void bump_ahead(){
+	// TODO
+	// Moves data from _ahead to current in the lighting program.
+}
+
+void constant(){
+	//TODO
+	// Sets outputs for constant lighting, and updates control parameters.
+}
+
+void crossfade(){
+	// TODO
+	// Sets outputs for crossfade lighting, and updates control parameters.
+}
+
+void pulse(){
+	// TODO
+	// Sets outputs for pulse lighting, and updates control parameters.
+}
