@@ -53,6 +53,8 @@ int rpm = 0;
 int id = 0;
 int team = 0;
 
+long int last_val_time = 0;
+
 // State machine for colour control. Allows for planning a follow-up program
 
 int program = 0; // 0: Null, 1: constant, 2: crossfade, 3: pulse
@@ -74,7 +76,7 @@ int step_count = 0; // How far are we in the program already.
 int steps_ahead = 1;
 int millis_per_step = 10; // How many milliseconds per step in crossfades/pulses
 int millis_per_step_ahead = 10; // So intended program time is repeats*steps*millis_per_step
-int pulse_stage = 0; // For use by pulse program. Indicates whether we're rising (0) or fading (1)
+int pulse_stage = 0; // For use by pulse program. Indicates whether we're rising (0), apex (1) or fading (2)
 
 long int systime; // Keep track of lighting steps by looking at system time.
 
@@ -106,13 +108,12 @@ void loop() {
 		}
 		else {
 			switch(program){ // TODO
-				case 1: break; //constant
+				case 1: p_constant(); break; //constant
 				case 2: break; //crossfade
-				case 3: break; //pulse
+				case 3: p_pulse(); break; //pulse
 				default: break; // Do nothing if the program is not recognised.
 			}
 		}
-
 	}
 
 	// TODO: Store hits info in sensible format.
@@ -134,8 +135,8 @@ void loop() {
 					case 86: setState(2); break; // set rounds
 					case 87: setState(3); break; // set id
 					case 89: setState(4); break; // set team
+					case 14: break; // TODO: Add data reset function
 					default: setValue(c); break; // It might be a number or junk, test it.
-					// TODO: Add reset code to remove hits data.
 				}
 			}
 			else { // This is a hit from another gun
@@ -195,17 +196,28 @@ void setState(int s){
 
 void setValue(int v){
 	if ((v >= 0) && (v < 10)) { // Then it is valid
-		switch(state){
-			case 1: mags = v; state = 0; break;
-			case 2: rpm = v; state = 0; break;
-			case 3: id = v; state = 0; break;
-			case 4: team = v; state = 0; break;
-			default: break;
+		if (millis() - last_val_time < 3000){ // Recent button press, decimal system adding, only two powers
+			switch(state){
+				case 1: mags = (mags*10) + v; state = 0; break;
+				case 2: rpm = (rpm*10) + v; state = 0; break;
+				case 3: id = (id*10) + v; state = 0; break;
+				case 4: team = (team*10) + v; state = 0; break;
+				default: break;
+			}
+		}
+		else {
+			switch(state){
+				case 1: mags = v; break;
+				case 2: rpm = v; break;
+				case 3: id = v; break;
+				case 4: team = v; break;
+				default: break;
+			}
+
+			last_val_time = millis();
 		}
 	}
 }
-
-// TODO: allow for multi-digit entries in setValue. i.e. x = 10*x + y
 
 byte reverse(byte input){
 	byte rev = 0;
@@ -350,17 +362,74 @@ void bump_armed_hit(){
 	else {disarmed_ahead();}
 }
 
-void constant(){
-	//TODO
+void p_constant(){
+
 	// Sets outputs for constant lighting, and updates control parameters.
+
+	CC = const_col;
+	setcol(CC);
+
+	step_count++;
+	if (step_count == steps) { // Then this stage is over
+		step_count = 0;
+		if (repeats > 0){repeats--;}
+	}
+
 }
 
-void crossfade(){
+void p_crossfade(){
 	// TODO
 	// Sets outputs for crossfade lighting, and updates control parameters.
+
 }
 
-void pulse(){
-	// TODO
+void p_pulse(){
+	
 	// Sets outputs for pulse lighting, and updates control parameters.
+
+	int upsteps= floor(steps/2);
+
+	delta_red = (byte)floor((pulse_to[0] - pulse_from[0]) / upsteps)
+	delta_green = (byte)floor((pulse_to[1] - pulse_from[1]) / upsteps)
+	delta_blue = (byte)floor((pulse_to[2] - pulse_from[2]) / upsteps)
+
+	byte newc[] = {0,0,0};
+
+	if (pulse_stage==0) { // We're going up
+		newc[0] = CC[0] + delta_red;
+		newc[1] = CC[1] + delta_green;
+		newc[2] = CC[2] + delta_blue;
+		CC =  newc;
+		setcol(CC);
+	}
+	else if (pulse_stage==1){ // We're at the apex
+		newc[0] = pulse_to[0];
+		newc[1] = pulse_to[1];
+		newc[2] = pulse_to[2];
+		CC =  newc;
+		setcol(CC);
+		pulse_stage = 2;
+	}
+	else { // We're going down
+		newc[0] = CC[0] - delta_red;
+		newc[1] = CC[1] - delta_green;
+		newc[2] = CC[2] - delta_blue;
+		CC =  newc;
+		setcol(CC);
+	}
+
+	step_count++;
+	if (step_count = upsteps){pulse_stage=1;} // Invert
+	if (step_count = steps){ // Clean up and reset
+		step_count = 0;
+		pulse_stage = 0;
+		if (repeats > 0){repeats--;}
+	}
+
+}
+
+void setcol(byte *col){
+  analogWrite(left_red, col[0]);
+  analogWrite(left_green, col[1]);
+  analogWrite(left_blue, col[2]);
 }
