@@ -59,16 +59,16 @@ int program = 0; // 0: Null, 1: constant, 2: crossfade, 3: pulse
 int program_ahead = 0; // Same as above
 int repeats = -1; // -1: unlimited 0: ready for next program, 1-N: number
 int repeats_ahead; // behaviour is to go Null program after _ahead is completed, if this is non-zero.
-byte const_col[] = BLACK;
-byte const_col_ahead[] = BLACK;
-byte cross_from[] = BLACK;
-byte cross_from_ahead[] = BLACK;
-byte cross_to[] = BLACK;
-byte cross_to_ahead[] = BLACK;
-byte pulse_from[] = BLACK;
-byte pulse_from_ahead[] = BLACK;
-byte pulse_to[] = BLACK;
-byte pulse_to_ahead[] = BLACK;
+byte *const_col = BLACK;
+byte *const_col_ahead = BLACK;
+byte *cross_from = BLACK;
+byte *cross_from_ahead = BLACK;
+byte *cross_to = BLACK;
+byte *cross_to_ahead = BLACK;
+byte *pulse_from = BLACK;
+byte *pulse_from_ahead = BLACK;
+byte *pulse_to = BLACK;
+byte *pulse_to_ahead = BLACK;
 int steps = 1; // How many steps to perform crossfades/pulses in.
 int step_count = 0; // How far are we in the program already.
 int steps_ahead = 1;
@@ -77,9 +77,6 @@ int millis_per_step_ahead = 10; // So intended program time is repeats*steps*mil
 int pulse_stage = 0; // For use by pulse program. Indicates whether we're rising (0) or fading (1)
 
 long int systime; // Keep track of lighting steps by looking at system time.
-
-boolean update_flag = false; // True if there's an update to the lighting program.
-// Need this to make sure that lighting program values aren't changed during a lighting cycle, because the IRRECV interrupts.
 
 // NOTE pins 0 and 1 are hardcoded as serial comms: we will use them as such, eventually.
 
@@ -101,9 +98,6 @@ void setup()
 }
 
 void loop() {
-
-
-	// TODO: Include lighting control. Team colours, hit indications, armed indication, admin data received, etc
 
 	if (program && (millis() - systime >= millis_per_step)) { // If there is a lighting program running at the moment, and the timer indicates it.
 
@@ -130,7 +124,9 @@ void loop() {
 		if (extractNEC(&d, &c, results.value)) {
 			Serial.println(results.value, HEX);
 			if (d==0) { // Then this is a system message
-				// TODO: Add system hit indication of state
+				
+				bump_admin_hit();
+
 				switch (c) {
 					case 20: printState(); break; // MENU button, print out the state of the device.
 					case 13: toggleArmed(); break; // POWER button, toggle armed.
@@ -143,6 +139,8 @@ void loop() {
 				}
 			}
 			else { // This is a hit from another gun
+
+				bump_armed_hit();
 				// TODO: game logic and game hit indication of state
 			}
 		}
@@ -185,8 +183,10 @@ void printState(){
 }
 
 void toggleArmed(){
-	armed=!armed;
-	// TODO: Add lighting indication of state
+	if armed {bump_disarmed();}
+	else {bump_armed();}
+
+	armed = !armed;
 }
 
 void setState(int s){
@@ -224,8 +224,130 @@ void setcol(byte *col){
 }
 
 void bump_ahead(){
-	// TODO
+	
 	// Moves data from _ahead to current in the lighting program.
+
+	program = program_ahead;
+	program_ahead = 0; 
+	repeats = repeats_ahead;
+	repeats_ahead = -1;
+	const_col = const_col_ahead;
+	const_col_ahead = BLACK;
+	cross_from = cross_from_ahead;
+	cross_from_ahead = BLACK;
+	cross_to = cross_to_ahead;
+	cross_to_ahead = BLACK;
+	pulse_from = pulse_from_ahead;
+	pulse_from_ahead = BLACK;
+	pulse_to = pulse_to_ahead;
+	pulse_to_ahead = BLACK;
+	steps = steps_ahead;
+	step_count = 0;
+	steps_ahead = 1;
+	millis_per_step = millis_per_step_ahead;
+	millis_per_step_ahead = 10;
+	pulse_stage = 0;
+}
+
+void team_ahead(){
+
+	// Sets up team as next lighting program
+
+	// Pulsing red colour over 2 seconds
+
+	program_ahead = 3;
+	repeats_ahead = -1;
+	pulse_from_ahead = BLACK;
+	pulse_to_ahead = RED; // TODO Make this dynamic
+	steps_ahead = 200;
+	millis_per_step_ahead = 10;
+}
+
+void disarmed_ahead(){
+
+	// Sets up disarmed as next lighting program
+
+	// Constant white colour
+
+	program_ahead = 1;
+	repeats_ahead = -1;
+	const_col_ahead = WHITE;
+	steps_ahead = 1;
+	millis_per_step_ahead = 1000;
+}
+
+void bump_armed(){
+
+	// Bump an armed indication and line up team colours ahead
+
+	// Armed indication is 3 short white to red pulses
+
+	program = 3;
+	repeats = 3;
+	pulse_from = WHITE;
+	pulse_to = RED;
+	steps = 100;
+	step_count = 0;
+	millis_per_step = 5;
+	pulse_stage = 0;
+
+	team_ahead();
+}
+
+void bump_disarmed(){
+
+	// Bump a disarmed indication and line up a disarmed indication
+
+	// Disarmed indication is 3 short red to green pulses
+
+	program = 3;
+	repeats = 3;
+	pulse_from = RED;
+	pulse_to = GREEN;
+	steps = 100;
+	step_count = 0;
+	millis_per_step = 5;
+	pulse_stage = 0;
+
+	disarmed_ahead();
+}
+
+void bump_admin_hit(){
+
+	// Bump an admin hit indication and line up the existing state
+
+	// Admin indication is 1 medium white to blue pulse
+
+	program = 3;
+	repeats = 1;
+	pulse_from = WHITE;
+	pulse_to = BLUE;
+	steps = 100;
+	step_count = 0;
+	millis_per_step = 8;
+	pulse_stage = 0;
+
+	if armed {team_ahead();}
+	else {disarmed_ahead();}
+}
+
+void bump_armed_hit(){
+
+	// Bump an armed hit indication and line up the existing state
+
+	// Armed indication is 1 medium red to blue pulse
+
+	program = 3;
+	repeats = 1;
+	pulse_from = RED;
+	pulse_to = BLUE;
+	steps = 100;
+	step_count = 0;
+	millis_per_step = 8;
+	pulse_stage = 0;
+
+	if armed {team_ahead();}
+	else {disarmed_ahead();}
 }
 
 void constant(){
