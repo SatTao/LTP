@@ -38,7 +38,7 @@ byte YELLOW[] = {255,255,0};
 byte WHITE[] = {255,255,255};
 byte BLACK[] = {0,0,0};
 
-byte CC[] = {0,0,0}; // Current colour configuration (8bitRGB)
+byte *CC = BLACK; // Current colour configuration (8bitRGB)
 
 // Vibration defintions
 
@@ -184,7 +184,7 @@ void printState(){
 }
 
 void toggleArmed(){
-	if armed {bump_disarmed();}
+	if (armed) {bump_disarmed();}
 	else {bump_armed();}
 
 	armed = !armed;
@@ -339,7 +339,7 @@ void bump_admin_hit(){
 	millis_per_step = 8;
 	pulse_stage = 0;
 
-	if armed {team_ahead();}
+	if (armed) {team_ahead();}
 	else {disarmed_ahead();}
 }
 
@@ -358,7 +358,7 @@ void bump_armed_hit(){
 	millis_per_step = 8;
 	pulse_stage = 0;
 
-	if armed {team_ahead();}
+	if (armed) {team_ahead();}
 	else {disarmed_ahead();}
 }
 
@@ -389,9 +389,9 @@ void p_pulse(){
 
 	int upsteps= floor(steps/2);
 
-	delta_red = (byte)floor((pulse_to[0] - pulse_from[0]) / upsteps)
-	delta_green = (byte)floor((pulse_to[1] - pulse_from[1]) / upsteps)
-	delta_blue = (byte)floor((pulse_to[2] - pulse_from[2]) / upsteps)
+	int delta_red = (byte)floor((pulse_to[0] - pulse_from[0]) / upsteps);
+	int delta_green = (byte)floor((pulse_to[1] - pulse_from[1]) / upsteps);
+	int delta_blue = (byte)floor((pulse_to[2] - pulse_from[2]) / upsteps);
 
 	byte newc[] = {0,0,0};
 
@@ -426,10 +426,4 @@ void p_pulse(){
 		if (repeats > 0){repeats--;}
 	}
 
-}
-
-void setcol(byte *col){
-  analogWrite(left_red, col[0]);
-  analogWrite(left_green, col[1]);
-  analogWrite(left_blue, col[2]);
 }
