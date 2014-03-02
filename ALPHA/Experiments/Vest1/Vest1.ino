@@ -46,14 +46,14 @@ int vibe = 7;
 
 // State machine for input data
 
-boolean armed = false;
-int state = 0; // 0: Null, 1: setmags, 2: setroundspermag, 3: gunID, 4: teamID
+volatile boolean armed = false;
+volatile int state = 0; // 0: Null, 1: setmags, 2: setroundspermag, 3: gunID, 4: teamID
 int mags = 0;
 int rpm = 0;
 int id = 0;
 int team = 0;
 
-long int last_val_time = 0;
+long int last_val_time = 0; // Controls decimal addition in state machine, time of 3 seconds.
 
 // State machine for colour control. Allows for planning a follow-up program
 
@@ -103,7 +103,7 @@ void loop() {
 
 	if (program && (millis() - systime >= millis_per_step)) { // If there is a lighting program running at the moment, and the timer indicates it.
 
-		if (repeats == 0){
+		if (repeats == 0){ // Start the next program.
 			bump_ahead();
 		}
 		else {
@@ -113,6 +113,7 @@ void loop() {
 				case 3: p_pulse(); break; //pulse
 				default: break; // Do nothing if the program is not recognised.
 			}
+			systime = millis();
 		}
 	}
 
@@ -121,11 +122,12 @@ void loop() {
 
 	if (irrecv.decode(&results)) {
 		byte c = 0; byte d = 0;
-                Serial.println("ADMIN HIT");
+                
 		if (extractNEC(&d, &c, results.value)) {
 			Serial.println(results.value, HEX);
 			if (d==0) { // Then this is a system message
 				
+				Serial.println("ADMIN HIT");
 				bump_admin_hit();
 
 				switch (c) {
@@ -184,8 +186,8 @@ void printState(){
 }
 
 void toggleArmed(){
-	if (armed) {bump_disarmed();}
-	else {bump_armed();}
+	if (armed) {bump_disarmed(); Serial.println("Disarmed");}
+	else {bump_armed(); Serial.println("Armed");}
 
 	armed = !armed;
 }
