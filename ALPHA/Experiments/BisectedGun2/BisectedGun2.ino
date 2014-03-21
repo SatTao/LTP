@@ -257,13 +257,13 @@ unsigned long buildNECCommand(byte device, byte command){
   byte notdevice = ~device;
   byte notcommand = ~command;
 
-  output |= device;
+  output |= reverse(device);
   output <<= 8;
-  output |= notdevice;
+  output |= reverse(notdevice);
   output <<= 8;
-  output |= command;
+  output |= reverse(command);
   output <<= 8;
-  output |= notcommand;
+  output |= reverse(notcommand);
 
   Serial.print("Device was\t"); Serial.println(device, BIN); 
   Serial.print("Command was\t"); Serial.println(command, BIN);
@@ -271,5 +271,15 @@ unsigned long buildNECCommand(byte device, byte command){
   
   return output;
 
+}
+
+byte reverse(byte input){
+	byte rev = 0;
+  	for(int i=0;i<8;i++){
+    	rev <<= 1;
+    	rev += input & 1;
+    	input >>= 1;
+  }
+  return rev;
 }
 // End

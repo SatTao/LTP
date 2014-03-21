@@ -96,6 +96,7 @@ void setup()
 
   systime = millis();
   irrecv.enableIRIn(); // Start the receiver
+  bump_disarmed();
   Serial.println("STARTUP");
 }
 
@@ -142,7 +143,8 @@ void loop() {
 				}
 			}
 			else { // This is a hit from another gun
-
+				Serial.print("GUN HIT:\t");
+				Serial.print(d); Serial.print("\t"); Serial.println(c);
 				bump_armed_hit();
 				// TODO: game logic and game hit indication of state
 			}
@@ -401,7 +403,7 @@ void p_pulse(){
 		newc[0] = CC[0] + delta_red;
 		newc[1] = CC[1] + delta_green;
 		newc[2] = CC[2] + delta_blue;
-		CC =  newc;
+		CC =  newc; // TODO: Bug source: newc is deleted at the end of the function: CC is not sensibly-valued on this call!
 		setcol(CC);
 	}
 	else if (pulse_stage==1){ // We're at the apex
