@@ -38,7 +38,7 @@ byte YELLOW[] = {255,255,0};
 byte WHITE[] = {255,255,255};
 byte BLACK[] = {0,0,0};
 
-byte *CC = BLACK; // Current colour configuration (8bitRGB)
+byte CC[] = {0,0,0}; // Current colour configuration (8bitRGB)
 
 // Vibration defintions
 
@@ -106,6 +106,12 @@ void loop() {
 
 		if (repeats == 0){ // Start the next program.
 			bump_ahead();
+                        switch(program){
+				case 1: copy_from(const_col, CC); break; //constant
+				case 2: break; //crossfade
+				case 3: copy_from(pulse_from, CC); break; //pulse
+				default: break; // Do nothing if the program is not recognised.
+			}
 		}
 		else {
 			switch(program){ // TODO
@@ -129,7 +135,7 @@ void loop() {
 			if (d==0) { // Then this is a system message
 				
 				Serial.println("ADMIN HIT");
-				bump_admin_hit();
+				//bump_admin_hit();
 
 				switch (c) {
 					case 20: printState(); break; // MENU button, print out the state of the device.
@@ -145,7 +151,7 @@ void loop() {
 			else { // This is a hit from another gun
 				Serial.print("GUN HIT:\t");
 				Serial.print(d); Serial.print("\t"); Serial.println(c);
-				bump_armed_hit();
+				//bump_armed_hit();
 				// TODO: game logic and game hit indication of state
 			}
 		}
@@ -242,6 +248,7 @@ void setcol(byte *col){
 void bump_ahead(){
 	
 	// Moves data from _ahead to current in the lighting program.
+        Serial.println("bump_ahead");
 
 	program = program_ahead;
 	program_ahead = 0; 
@@ -269,6 +276,8 @@ void team_ahead(){
 
 	// Sets up team as next lighting program
 
+        Serial.println("team_ahead");
+
 	// Pulsing red colour over 2 seconds
 
 	program_ahead = 3;
@@ -283,6 +292,8 @@ void disarmed_ahead(){
 
 	// Sets up disarmed as next lighting program
 
+        Serial.println("disarmed_ahead");
+
 	// Constant white colour
 
 	program_ahead = 1;
@@ -295,6 +306,8 @@ void disarmed_ahead(){
 void bump_armed(){
 
 	// Bump an armed indication and line up team colours ahead
+
+        Serial.println("bump_armed");
 
 	// Armed indication is 3 short white to red pulses
 
@@ -314,6 +327,8 @@ void bump_disarmed(){
 
 	// Bump a disarmed indication and line up a disarmed indication
 
+        Serial.println("bump_disarmed");
+
 	// Disarmed indication is 3 short red to green pulses
 
 	program = 3;
@@ -331,6 +346,8 @@ void bump_disarmed(){
 void bump_admin_hit(){
 
 	// Bump an admin hit indication and line up the existing state
+
+        Serial.println("bump_admin_hit");
 
 	// Admin indication is 1 medium white to blue pulse
 
@@ -351,6 +368,8 @@ void bump_armed_hit(){
 
 	// Bump an armed hit indication and line up the existing state
 
+        Serial.println("bump_armed_hit");
+
 	// Armed indication is 1 medium red to blue pulse
 
 	program = 3;
@@ -370,7 +389,7 @@ void p_constant(){
 
 	// Sets outputs for constant lighting, and updates control parameters.
 
-	CC = const_col;
+	copy_from(const_col, CC);
 	setcol(CC);
 
 	step_count++;
@@ -403,22 +422,19 @@ void p_pulse(){
 		newc[0] = CC[0] + delta_red;
 		newc[1] = CC[1] + delta_green;
 		newc[2] = CC[2] + delta_blue;
-		CC =  newc; // TODO: Bug source: newc is deleted at the end of the function: CC is not sensibly-valued on this call!
+		copy_from(newc, CC); 
 		setcol(CC);
 	}
 	else if (pulse_stage==1){ // We're at the apex
-		newc[0] = pulse_to[0];
-		newc[1] = pulse_to[1];
-		newc[2] = pulse_to[2];
-		CC =  newc;
-		setcol(CC);
+		copy_from(pulse_to, newc);
+		copy_from(newc, CC);
 		pulse_stage = 2;
 	}
 	else { // We're going down
 		newc[0] = CC[0] - delta_red;
 		newc[1] = CC[1] - delta_green;
 		newc[2] = CC[2] - delta_blue;
-		CC =  newc;
+		copy_from(newc, CC);
 		setcol(CC);
 	}
 
@@ -430,4 +446,10 @@ void p_pulse(){
 		if (repeats > 0){repeats--;}
 	}
 
+}
+
+void copy_from(byte *from, byte *to){
+	to[0] = from[0];
+	to[1] = from[1];
+	to[2] = from[2];
 }
