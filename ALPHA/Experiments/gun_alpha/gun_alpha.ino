@@ -85,7 +85,7 @@ volatile boolean botherReload = false;
 
 IRsend irsend; // IRSend library implementation
 
-IRrecv irrecv(RECV_PIN); // IRrecv library implementation
+IRrecv irrecv(recvPin); // IRrecv library implementation
 
 decode_results results; // results structure for IR recv
 
