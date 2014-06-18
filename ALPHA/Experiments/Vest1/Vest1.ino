@@ -96,7 +96,7 @@ void setup()
 
   systime = millis();
   irrecv.enableIRIn(); // Start the receiver
-  bump_disarmed();
+  disarmed_ahead(); bump_ahead();
   Serial.println("STARTUP");
 }
 
@@ -106,22 +106,23 @@ void loop() {
 
 		if (repeats == 0){ // Start the next program.
 			bump_ahead();
-                        switch(program){
+            switch(program){
 				case 1: copy_from(const_col, CC); break; //constant
 				case 2: break; //crossfade
 				case 3: copy_from(pulse_from, CC); break; //pulse
 				default: break; // Do nothing if the program is not recognised.
 			}
+			
 		}
-		else {
-			switch(program){ // TODO
-				case 1: p_constant(); break; //constant
-				case 2: break; //crossfade
-				case 3: p_pulse(); break; //pulse
-				default: break; // Do nothing if the program is not recognised.
-			}
-			systime = millis();
+
+		switch(program){ // TODO
+			case 1: p_constant(); break; //constant
+			case 2: break; //crossfade
+			case 3: p_pulse(); break; //pulse
+			default: break; // Do nothing if the program is not recognised.
 		}
+		systime = millis();
+
 	}
 
 	// TODO: Store hits info in sensible format.
@@ -194,8 +195,8 @@ void printState(){
 }
 
 void toggleArmed(){
-	if (armed) {bump_disarmed(); Serial.println("Disarmed");}
-	else {bump_armed(); Serial.println("Armed");}
+	if (armed) {disarmed_ahead(); bump_ahead(); Serial.println("Disarmed");}
+	else {team_ahead(); bump_ahead(); Serial.println("Armed");}
 
 	armed = !armed;
 }
@@ -270,6 +271,14 @@ void bump_ahead(){
 	millis_per_step = millis_per_step_ahead;
 	millis_per_step_ahead = 10;
 	pulse_stage = 0;
+
+        switch(program){
+		case 1: copy_from(const_col, CC); break; //constant
+		case 2: break; //crossfade
+		case 3: copy_from(pulse_from, CC); break; //pulse
+		default: break; // Do nothing if the program is not recognised.
+	}
+        print_lighting_state();
 }
 
 void team_ahead(){
@@ -452,4 +461,15 @@ void copy_from(byte *from, byte *to){
 	to[0] = from[0];
 	to[1] = from[1];
 	to[2] = from[2];
+}
+
+void print_lighting_state(){
+
+	Serial.println("Lighting state:");
+	Serial.print("Program:\t"); Serial.println(program, DEC);
+	Serial.print("Repeats:\t"); Serial.println(repeats, DEC);
+	Serial.print("Steps:\t"); Serial.println(steps, DEC);
+	Serial.print("Millis per Step:\t"); Serial.println(millis_per_step, DEC);
+	Serial.print("CC:\t"); Serial.print(CC[0]); Serial.print(","); Serial.print(CC[1]); Serial.print(","); Serial.println(CC[2]);
+
 }
