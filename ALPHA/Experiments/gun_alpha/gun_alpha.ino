@@ -1,4 +1,4 @@
-// Software to run on bisected prototype gun BLH 1, from breadboarded arduino UNO. No longer requires interrupts or multiplexor.
+// Software for prototype 2, full size
 
 #include <IRremote.h>
 
@@ -32,11 +32,6 @@ int clockPin = 6;
 
 // Activity codes for LED bargraph animation
 
-//byte CHAMBER_RELOAD[] = {0, B00000001, B00000011, B00000111, B00001111, B00011111, B00111111, B01111111, B11111111};
-//byte MAG_RELOAD[] = {0, B10000001, B11000011, B11100111, B11111111, B01111110, B00111100, B00011000, 0, 1, 0};
-//byte MAG_OUT[] = {B00000011};
-//byte ALL_OUT[] = {B10000000};
-
 // Character codes for common anode 7 segment, translated into vertical controller connections.
 
 byte ZERO = B01000010;
@@ -68,14 +63,25 @@ byte ALL_OUT[] = {DASH};
 
 // Global variables
 
-unsigned long reloadflash;
+unsigned long reloadFlash;
+int reloadFlashDelay = 500;
+unsigned long hitWait;
+
+int gameHitDelay = 2000 // ms to wait after hit
 
 int roundsPerMag = 9; // ATTENTION! Cannot be greater than 9 until reload logic can handle 2 digits on display
 int roundsRemaining = 9;
 
 int magsRemaining = 6;
 
+int team = 1;
+
 unsigned long myFireCode;
+
+// Admin hits state machine
+
+volatile boolean armed = false;
+int adminState = 0; // 0 unassigned, 1 Mags, 2 RPM, 3 Team. Acceptable values 0 - 9
 
 // Trigger logic
 volatile boolean botherTrigger = false;
@@ -117,9 +123,8 @@ void setup() {
 
   digitalWrite(armedPin, LOW);
   reloadChamber(); // sets botherTrigger true
-  digitalWrite(armedPin, HIGH);
 
-  reloadflash = millis();
+  reloadFlash = millis();
 
   irrecv.enableIRIn(); // Start the receiver
 
@@ -135,25 +140,36 @@ void loop() {
     Serial.print("Device code:\t"); Serial.println(d);
     Serial.print("Command code:\t"); Serial.println(c);
 
-    // Device code of 0 means this is the TV remote hitting it.
+    if ((d==0) && ok){
+      adminHit(c);
+    }
+    if ( (d>0) && (d<10) && (d!=team) && ok){
+      gameHit(d, c); // Friendly Fire is off by default
+    }
+    if (!ok){
+      grazeHit(); // You have been grazed by a shot
+    }
 
     irrecv.resume(); // Receive the next value
   }
-  if (botherTrigger){ 
-    if (checkTrigger()){
-      botherTrigger = false;
-      fire();
+  if (armed){ // Only check buttons if armed
+
+    if (botherTrigger){ 
+      if (checkTrigger()){
+        botherTrigger = false;
+        fire();
+      }
     }
-  }
-  if (botherReload){
-    if (millis() - reloadflash > 500) { // Flash the reload button
-    digitalWrite(reloadLedPin, !digitalRead(reloadLedPin));
-    reloadflash = millis();
-    } 
-    if (checkReload()){
-      botherReload = false;
-      digitalWrite(reloadLedPin, LOW);
-      reloadMag();
+    if (botherReload){
+      if (millis() - reloadFlash > reloadFlashDelay) { // Flash the reload button
+      digitalWrite(reloadLedPin, !digitalRead(reloadLedPin));
+      reloadFlash = millis();
+      } 
+      if (checkReload()){
+        botherReload = false;
+        digitalWrite(reloadLedPin, LOW);
+        reloadMag();
+      }
     }
   }
 }
@@ -244,7 +260,7 @@ void setLED(byte output){ // This writes the output verbatim to the 595 - you ne
   digitalWrite(latchPin, HIGH);
 }
 
-void set7seg(byte output){} // Placeholder
+void set7seg(byte output){} // Placeholder TODO
 
 void animate(byte *ACTIVITY_CODE, int animation_length, int animation_delay){ // Set LED bargraph to animate the event coded by ACTIVITY_CODE
   // Serial.println("Animating LED output");
@@ -254,6 +270,24 @@ void animate(byte *ACTIVITY_CODE, int animation_length, int animation_delay){ //
   }
 }
 
+void adminHit(int c){
+  Serial.println("Admin Hit.")
+    switch (c) {
+        case 13: toggleArmed(); break; // POWER button, toggle armed.
+        case 88: setState(1); break; // set mags
+        case 86: setState(2); break; // set rounds
+        case 87: setState(3); break; // set team
+        default: setValue(c); break; // It might be a number or junk, test it.
+      }
+      // TODO add music
+  }
+
+void gameHit(int device, int command){} // Callback after game hit. Initiates feedback. TODO
+
+void grazeHit(){} // TODO: What happens if you're grazed
+
+void initiateMusic(int event){} // Talk to co-processor to request music
+
 boolean checkTrigger(){
   if (!digitalRead(triggerPin)){ // Trigger is pulled to ground if the switch is closed
     return true;
@@ -262,7 +296,7 @@ boolean checkTrigger(){
 }
 
 boolean checkReload(){
-  if (!digitalRead(reloadPin)){ // Trigger is pulled to ground if the switch is closed
+  if (!digitalRead(reloadPin)){ // Reload is pulled to ground if the switch is closed
     return true;
   }
   else {return false;}
@@ -332,4 +366,24 @@ byte reverse(byte input){
   }
   return rev;
 }
+
+void toggleArmed(){
+  armed = !armed;
+}
+
+void setState(int s){
+  adminState = s;
+}
+
+void setValue(int v){
+  if ((v >= 0) && (v < 10)) { // Then it is valid
+    switch(adminState){
+      case 1: magsRemaining = v; roundsRemaining = roundsPerMag; break;
+      case 2: roundsPerMag = v; roundsRemaining = roundsPerMag; break;
+      case 3: team = v; break;
+      default: break;
+    }
+  }
+}
+
 // End
