@@ -4,31 +4,33 @@
 
 // Pin definitions
 
-int armedPin = A3;
+// Pin 0 and 1 free for RxTx if reqd.
 
-// Trigger, reload and IR pins. IR must be on pin 3 to work with the IR library, and it uses interrupt timers.
+// IR must be on pin 3 to work with the IR library, and it uses interrupt timers.
  
-int triggerPin = 2; // Does not use the interrupt
+int triggerPin = 2; // Reload and trigger pins must be pulled high as input, and connected through their switches to ground.
+
 int IRPin = 3; // Connected directly to the output IR diode
-int reloadPin = 7; // Reload and trigger pins must be pulled high as input, and connected through their switches to ground.
-
-int reloadLedPin = 10;
-
-int recvPin = 12; // Non-pwm pin for IR recv
-
-// Output pin for vibration (HOLD LOW!)
-
-int vibePin = 9;
-
-// Output pin for sound, activates cheap sound card, hold low!
-
-int soundPin = 8;
 
 // LED Bargraph setup (common cathode)
 
 int Serial595Pin = 4;
 int latchPin = 5;
 int clockPin = 6;
+
+int reloadPin = 7; // Reload and trigger pins must be pulled high as input, and connected through their switches to ground.
+
+int recvPin = 8; // Non-pwm pin for IR recv
+
+int vibePin = 9; // Output pin for vibration (HOLD LOW!)
+
+int reloadLedPin = 10;
+
+// Pins 11, 12, 13 and Reset should be free for programming.
+
+int armedPin = A0;
+
+// Comms with A1 - A5 with co-processor. TODO
 
 // Activity codes for LED bargraph animation
 
@@ -47,6 +49,7 @@ byte NINE = B00010010;
 
 byte DP = B11111101;
 byte OFF = B11111111;
+byte ON = B00000000;
 
 byte HORIZ = B00110111;
 byte VERT = B11001010;
@@ -60,14 +63,12 @@ byte CHAMBER_RELOAD[] = {OFF, DASH, VERT, HORIZ, EIGHT, OFF};
 byte MAG_RELOAD[] = {OFF, DASH, VERT, HORIZ, EIGHT, OFF}; // TODO Make this better
 byte MAG_OUT[] = {ZERO};
 byte ALL_OUT[] = {DASH};
+byte HIT[] = {OFF, VERT, HORIZ, VERT, HORIZ, VERT, HORIZ, VERT, HORIZ, OFF};
 
 // Global variables
 
 unsigned long reloadFlash;
 int reloadFlashDelay = 500;
-unsigned long hitWait;
-
-int gameHitDelay = 2000 // ms to wait after hit
 
 int roundsPerMag = 9; // ATTENTION! Cannot be greater than 9 until reload logic can handle 2 digits on display
 int roundsRemaining = 9;
@@ -113,7 +114,6 @@ void setup() {
   pinMode(reloadPin, INPUT); digitalWrite(reloadPin, HIGH);
   
   pinMode(vibePin, OUTPUT); digitalWrite(vibePin, LOW);
-  pinMode(soundPin, OUTPUT); digitalWrite(soundPin, LOW);
   
   pinMode(latchPin, OUTPUT); // Let these float for a while, not v important
   pinMode(clockPin, OUTPUT);
@@ -183,7 +183,6 @@ void fire(){
     roundsRemaining--;
     
     // Make a noise
-    digitalWrite(soundPin, HIGH);
     
     // Make a vibration
     digitalWrite(vibePin, HIGH);
@@ -204,8 +203,6 @@ void fire(){
     delay(100);
     
     // Cancel the noise
-    
-    digitalWrite(soundPin, LOW);
     
     // Check rounds remaining and do the reload logic    
     if (roundsRemaining){reloadChamber();}
@@ -282,7 +279,14 @@ void adminHit(int c){
       // TODO add music
   }
 
-void gameHit(int device, int command){} // Callback after game hit. Initiates feedback. TODO
+void gameHit(int device, int command){
+
+  // TODO music
+  digitalWrite(vibePin, HIGH);
+  animate(HIT,10,200); // Gives roughly 2 second delay.
+  digitalWrite(vibePin, LOW);
+
+}
 
 void grazeHit(){} // TODO: What happens if you're grazed
 
@@ -368,7 +372,7 @@ byte reverse(byte input){
 }
 
 void toggleArmed(){
-  armed = !armed;
+  armed = !armed; digitalWrite(armedPin, !digitalRead(armedPin));
 }
 
 void setState(int s){
