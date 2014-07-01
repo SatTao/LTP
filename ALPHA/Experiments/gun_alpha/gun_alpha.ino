@@ -30,7 +30,23 @@ int reloadLedPin = 10;
 
 int armedPin = A0;
 
-// Comms with A1 - A5 with co-processor. TODO
+// Comms with A1 - A4 with co-processor.
+
+int add1 = A1;
+int add2 = A2;
+int add3 = A3;
+int playPin = A4;
+
+// Track codes for music
+
+byte ADMIN = 0;
+byte RELOAD = 1;
+byte SHOOT = 2;
+byte ALLOUT = 3;
+byte HIT = 4;
+byte GRENADE = 5;
+byte POWERON = 6;
+byte POWEROFF = 7;
 
 // Activity codes for LED bargraph animation
 
@@ -63,7 +79,7 @@ byte CHAMBER_RELOAD[] = {OFF, DASH, VERT, HORIZ, EIGHT, OFF};
 byte MAG_RELOAD[] = {OFF, DASH, VERT, HORIZ, EIGHT, OFF}; // TODO Make this better
 byte MAG_OUT[] = {ZERO};
 byte ALL_OUT[] = {DASH};
-byte HIT[] = {OFF, VERT, HORIZ, VERT, HORIZ, VERT, HORIZ, VERT, HORIZ, OFF};
+byte BEENHIT[] = {OFF, VERT, HORIZ, VERT, HORIZ, VERT, HORIZ, VERT, HORIZ, OFF};
 
 // Global variables
 
@@ -128,6 +144,11 @@ void setup() {
 
   irrecv.enableIRIn(); // Start the receiver
 
+  pinMode(add1, OUTPUT); digitalWrite(add1, HIGH); // Give it plenty of time before doing this.
+  pinMode(add2, OUTPUT); digitalWrite(add2, HIGH);
+  pinMode(add3, OUTPUT); digitalWrite(add3, HIGH);
+  pinMode(playPin, OUTPUT); digitalWrite(playPin, HIGH); // High is inactive
+
   Serial.println("SETUP COMPLETE!");
 }
 
@@ -141,6 +162,7 @@ void loop() {
     Serial.print("Command code:\t"); Serial.println(c);
 
     if ((d==0) && ok){
+      request_track(0);
       adminHit(c);
     }
     if ( (d>0) && (d<10) && (d!=team) && ok){
@@ -183,6 +205,7 @@ void fire(){
     roundsRemaining--;
     
     // Make a noise
+    request_track(2);
     
     // Make a vibration
     digitalWrite(vibePin, HIGH);
@@ -202,11 +225,9 @@ void fire(){
     setLED(OFF);    
     delay(100);
     
-    // Cancel the noise
-    
     // Check rounds remaining and do the reload logic    
     if (roundsRemaining){reloadChamber();}
-    else {animate(MAG_OUT,1,10); botherReload=true;}
+    else {request_track(3); animate(MAG_OUT,1,10); delay(1000); botherReload=true;}
   }
 }
 
@@ -225,6 +246,9 @@ void reloadMag(){
     
     // Handle the reload logic
     magsRemaining--;
+
+    // Music
+    request_track(1);
     
     // Make a vibration
     digitalWrite(vibePin, HIGH);
@@ -244,8 +268,10 @@ void reloadMag(){
   }
   else {
     // Give a signal there's no juice left
+    request_track(3);
     animate(ALL_OUT,1,10);
     digitalWrite(armedPin, LOW);
+    delay(1000);
     // DO NOT set any bother variables true here, result is that main loop continues indefintely.
   }
 }
@@ -268,7 +294,7 @@ void animate(byte *ACTIVITY_CODE, int animation_length, int animation_delay){ //
 }
 
 void adminHit(int c){
-  Serial.println("Admin Hit.")
+  Serial.println("Admin Hit.");
     switch (c) {
         case 13: toggleArmed(); break; // POWER button, toggle armed.
         case 88: setState(1); break; // set mags
@@ -276,21 +302,42 @@ void adminHit(int c){
         case 87: setState(3); break; // set team
         default: setValue(c); break; // It might be a number or junk, test it.
       }
-      // TODO add music
+      
   }
 
 void gameHit(int device, int command){
 
-  // TODO music
+  request_track(4);
   digitalWrite(vibePin, HIGH);
-  animate(HIT,10,200); // Gives roughly 2 second delay.
+  animate(BEENHIT,10,200); // Gives roughly 2 second delay.
   digitalWrite(vibePin, LOW);
+
+  // TODO Add reaction to grenade blasts
 
 }
 
 void grazeHit(){} // TODO: What happens if you're grazed
 
-void initiateMusic(int event){} // Talk to co-processor to request music
+void request_track(byte track){
+  byte out1 = track & 4;
+  byte out2 = track & 2;
+  byte out3 = track & 1;
+  
+  digitalWrite(add1, !out1);
+  digitalWrite(add2, !out2);
+  digitalWrite(add3, !out3);
+  
+  delay(5);
+  
+  digitalWrite(playPin, LOW);
+  
+  delay(20); // Give the musicIC long enough to register the playPin state
+  
+  digitalWrite(playPin, HIGH); // Reset everything
+  digitalWrite(add1, HIGH);
+  digitalWrite(add2, HIGH);
+  digitalWrite(add3, HIGH);
+}
 
 boolean checkTrigger(){
   if (!digitalRead(triggerPin)){ // Trigger is pulled to ground if the switch is closed
@@ -372,7 +419,17 @@ byte reverse(byte input){
 }
 
 void toggleArmed(){
-  armed = !armed; digitalWrite(armedPin, !digitalRead(armedPin));
+  if(armed){
+    delay(1000);
+    armed=false; digitalWrite(armedPin, LOW);
+    request_track(7);
+  }
+  else{
+    delay(1000);
+    armed=true; digitalWrite(armedPin, HIGH);
+    request_track(6);
+  }
+  delay(1000); // Ensure there's time for the music
 }
 
 void setState(int s){
