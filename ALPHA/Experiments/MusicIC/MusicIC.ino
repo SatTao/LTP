@@ -54,6 +54,7 @@ void setup() {
   else {
     Serial.println(F("Wiring is correct and a card is present.")); 
   }
+  delay(1000);
 }
 
 
