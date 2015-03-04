@@ -12,7 +12,7 @@ int triggerPin = 2; // Reload and trigger pins must be pulled high as input, and
 
 int IRPin = 3; // Connected directly to the output IR diode
 
-// LED Bargraph setup (common cathode)
+// LED Bargraph setup (common anode) 
 
 int Serial595Pin = 4;
 int latchPin = 5;
@@ -29,13 +29,14 @@ int reloadLedPin = 10;
 // Pins 11, 12, 13 and Reset should be free for programming.
 
 int armedPin = A0;
+int muzzlePin = A5;
 
 // Comms with A1 - A4 with co-processor.
 
-int add1 = A1;
-int add2 = A2;
-int add3 = A3;
-int playPin = A4;
+int add1 = A4;
+int add2 = A3;
+int add3 = A2;
+int playPin = A1;
 
 // Track codes for music
 
@@ -50,26 +51,26 @@ byte POWEROFF = 7;
 
 // Activity codes for LED bargraph animation
 
-// Character codes for common anode 7 segment, translated into vertical controller connections.
+// Character codes for common anode 7 segment, translated into R2 common anode controller connections.
 
-byte ZERO = B01000010;
-byte ONE = B11111010;
-byte TWO = B00100011;
-byte THREE = B00110010;
-byte FOUR = B10011010;
-byte FIVE = B00010110;
-byte SIX = B00000110;
-byte SEVEN = B11110010;
-byte EIGHT = B00000010;
-byte NINE = B00010010;
+byte ZERO = B00110000;
+byte ONE = B11110101;
+byte TWO = B01011000;
+byte THREE = B11010000;
+byte FOUR = B10010101;
+byte FIVE = B10010010;
+byte SIX = B00010010;
+byte SEVEN = B11110100;
+byte EIGHT = B00010000;
+byte NINE = B10010000;
 
-byte DP = B11111101;
+byte DP = B11101111;
 byte OFF = B11111111;
 byte ON = B00000000;
 
-byte HORIZ = B00110111;
-byte VERT = B11001010;
-byte DASH = B10111111;
+byte HORIZ = B11011010;
+byte VERT = B00110101;
+byte DASH = B11011111;
 
 // Activity codes for LED 7segment animation
 
@@ -130,6 +131,7 @@ void setup() {
   pinMode(reloadPin, INPUT); digitalWrite(reloadPin, HIGH);
   
   pinMode(vibePin, OUTPUT); digitalWrite(vibePin, LOW);
+  pinMode(muzzlePin, OUTPUT); digitalWrite(muzzlePin, LOW);
   
   pinMode(latchPin, OUTPUT); // Let these float for a while, not v important
   pinMode(clockPin, OUTPUT);
@@ -174,6 +176,16 @@ void loop() {
 
     irrecv.resume(); // Receive the next value
   }
+
+  if(Serial.available()){
+    char sTemp = Serial.read();
+    switch (sTemp){
+      case 'f': if (botherTrigger && armed){botherTrigger = false; fire();}; break;
+      case 'r': if (botherReload && armed){botherReload = false; reloadMag();}; break;
+      default: break;
+    }
+  }
+
   if (armed){ // Only check buttons if armed
 
     if (botherTrigger){ 
@@ -189,7 +201,6 @@ void loop() {
       } 
       if (checkReload()){
         botherReload = false;
-        digitalWrite(reloadLedPin, LOW);
         reloadMag();
       }
     }
@@ -207,14 +218,16 @@ void fire(){
     // Make a noise
     request_track(2);
     
-    // Make a vibration
+    // Make a vibration and flash
     digitalWrite(vibePin, HIGH);
+    digitalWrite(muzzlePin, HIGH);
     
     // Fire the weapon
-    irsend.sendNEC(myFireCode, 32); // NEC code, TODO: make unique by using values held in eeprom
+    irsend.sendNEC(myFireCode, 32); // NEC code, TODO: make unique by using team designation
     delay(40);
     
-    // Cancel the vibration
+    // Cancel the vibration and flash
+    digitalWrite(muzzlePin, LOW);
     digitalWrite(vibePin, LOW);
 
     //Restart the IR detector
@@ -241,6 +254,9 @@ void reloadChamber(){ // Only gets called if there's definitely a remaining roun
 
 void reloadMag(){
   Serial.println("RELOAD MAG ROUTINE");
+
+  digitalWrite(reloadLedPin, LOW);
+  
   // Check mags
   if (magsRemaining) {
     
@@ -272,7 +288,7 @@ void reloadMag(){
     animate(ALL_OUT,1,10);
     digitalWrite(armedPin, LOW);
     delay(1000);
-    // DO NOT set any bother variables true here, result is that main loop continues indefintely.
+    // DO NOT set any bother variables true here, result is that main loop continues indefinitly.
   }
 }
 
@@ -282,8 +298,6 @@ void setLED(byte output){ // This writes the output verbatim to the 595 - you ne
   shiftOut(Serial595Pin, clockPin, LSBFIRST, output);   
   digitalWrite(latchPin, HIGH);
 }
-
-void set7seg(byte output){} // Placeholder TODO
 
 void animate(byte *ACTIVITY_CODE, int animation_length, int animation_delay){ // Set LED bargraph to animate the event coded by ACTIVITY_CODE
   // Serial.println("Animating LED output");
@@ -357,7 +371,7 @@ unsigned long buildNECCommand(byte device, byte command){
 
   // Device and command are 8 bits -> 0 to 256 are valid values
 
-  if (device < 0 | command < 0 | device > 256 | command > 256){
+  if ((device < 0) | (command < 0) | (device > 256) | (command > 256)){
     return 0;
   }
 
