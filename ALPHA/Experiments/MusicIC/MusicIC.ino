@@ -2,6 +2,7 @@
 
 // Sound
 
+// int LM386Power = 8;
 int soundPin = 9;
 
 // MISO MISO CS SCK are used as normal on the SPI port. CS is 10.
@@ -29,7 +30,7 @@ char *AUDIO_FILES[] = {
 
 void setup() {
 
-  pinMode(soundPin, OUTPUT); digitalWrite(soundPin, LOW);
+  //pinMode(soundPin, OUTPUT); digitalWrite(soundPin, LOW);
 
   pinMode(add1, INPUT); digitalWrite(add1, HIGH);
   pinMode(add2, INPUT); digitalWrite(add2, HIGH);
@@ -53,6 +54,7 @@ void setup() {
   } 
   else {
     Serial.println(F("Wiring is correct and a card is present.")); 
+
   }
   delay(1000);
 }
@@ -60,7 +62,29 @@ void setup() {
 
 void loop(void) {
 
+  if(Serial.available()){    
+    int tempnum = Serial.read() - 48; // Hacky conversion ascii to sensible integer
+    if (tempnum >= 0 && tempnum <8){
+
+      if(!SdPlay.setFile(AUDIO_FILES[(tempnum)])) {
+        Serial.println(F(" not found on card! Error code: "));
+        Serial.println(SdPlay.getLastError());
+        while(1);
+      } else {
+       Serial.println(F("Command received, playing...")); 
+      }    
+
+      SdPlay.play();
+      while(!SdPlay.isStopped()) {
+        ; // no worker needed anymore :-)
+      }
+
+      Serial.println(F("done."));
+    }
+  }
+
   if (receive_command(index)){
+
     if(!SdPlay.setFile(AUDIO_FILES[(*index)])) {
       Serial.println(F(" not found on card! Error code: "));
       Serial.println(SdPlay.getLastError());
@@ -73,6 +97,7 @@ void loop(void) {
     while(!SdPlay.isStopped()) {
       ; // no worker needed anymore :-)
     }
+
     Serial.println(F("done."));
   }
 
