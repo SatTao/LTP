@@ -64,6 +64,13 @@ byte SEVEN = B11110100;
 byte EIGHT = B00010000;
 byte NINE = B10010000;
 
+byte LET_A = B00010100;
+byte LET_M = B00011010;
+byte LET_R = B00111100;
+byte LET_T = B00011011;
+byte LET_I = B00010101;
+byte LET_F = B00011110;
+
 byte DP = B11101111;
 byte OFF = B11111111;
 byte ON = B00000000;
@@ -87,19 +94,22 @@ byte BEENHIT[] = {OFF, VERT, HORIZ, VERT, HORIZ, VERT, HORIZ, VERT, HORIZ, OFF};
 unsigned long reloadFlash;
 int reloadFlashDelay = 500;
 
-int roundsPerMag = 9; // ATTENTION! Cannot be greater than 9 until reload logic can handle 2 digits on display
-int roundsRemaining = 9;
+int roundsPerMag = 8; // ATTENTION! Cannot be greater than 9 until reload logic can handle 2 digits on display
+int roundsRemaining = 8;
 
-int magsRemaining = 6;
+int magsRemaining = 4;
 
-int team = 1;
+int team = 1; // Startup here by default. TODO change this to EEPROM values.
+
+int ID = 1; // As above
 
 unsigned long myFireCode;
 
 // Admin hits state machine
 
 volatile boolean armed = false;
-int adminState = 0; // 0 unassigned, 1 Mags, 2 RPM, 3 Team. Acceptable values 0 - 9
+volatile boolean friendlyFire = false;
+int adminState = 0; // 0 unassigned, 1 Mags, 2 RPM, 3 Team, 4 ID. Acceptable values 0 - 9
 
 // Trigger logic
 volatile boolean botherTrigger = false;
@@ -121,8 +131,8 @@ void setup() {
   Serial.begin(9600);
   delay(500);
   Serial.println("SETUP");
-  Serial.println("Building local NEC fire code, incorporating device 8 command 234");
-  myFireCode = buildNECCommand(8,234);
+  Serial.println("Building local NEC fire code, incorporating device 1 command 1");
+  myFireCode = buildNECCommand(team,1);
   Serial.println(myFireCode, HEX);
   
   pinMode(IRPin, OUTPUT); digitalWrite(IRPin, LOW);
@@ -167,8 +177,8 @@ void loop() {
       request_track(0);
       adminHit(c);
     }
-    if ( (d>0) && (d<10) && (d!=team) && ok){
-      gameHit(d, c); // Friendly Fire is off by default
+    if ( (d>0) && (d<10) && (((int)d!=team) || friendlyFire) && ok){ // TODO THIS MAY BE DANGEROUS CASTING TO INT
+      gameHit(d, c); 
     }
     if (!ok){
       grazeHit(); // You have been grazed by a shot
@@ -192,6 +202,11 @@ void loop() {
       if (checkTrigger()){
         botherTrigger = false;
         fire();
+      }
+    }
+    else{
+      if (checkTrigger()){
+        request_track(3); // Can't fire. Maybe this is uneccesary or badly implemented. TODO.
       }
     }
     if (botherReload){
@@ -223,7 +238,7 @@ void fire(){
     digitalWrite(muzzlePin, HIGH);
     
     // Fire the weapon
-    irsend.sendNEC(myFireCode, 32); // NEC code, TODO: make unique by using team designation
+    irsend.sendNEC(myFireCode, 32); // NEC code
     delay(40);
     
     // Cancel the vibration and flash
@@ -239,8 +254,8 @@ void fire(){
     delay(100);
     
     // Check rounds remaining and do the reload logic    
-    if (roundsRemaining){reloadChamber();}
-    else {request_track(3); animate(MAG_OUT,1,10); delay(1000); botherReload=true;}
+    if (roundsRemaining){delay(500); reloadChamber();}
+    else {delay(800); request_track(3); animate(MAG_OUT,1,10); delay(1000); botherReload=true;} 
   }
 }
 
@@ -311,15 +326,25 @@ void adminHit(int c){
   Serial.println("Admin Hit.");
     switch (c) {
         case 13: toggleArmed(); break; // POWER button, toggle armed.
-        case 88: setState(1); break; // set mags
-        case 86: setState(2); break; // set rounds
-        case 87: setState(3); break; // set team
+        case 14: gameHit(0,0); break; // MUTE button, simulates a hit from an enemy.
+        case 20: toggleFriendly(); setLED(LET_F); break;// MENU button, toggles friendlyFire.
+        case 88: setState(1); setLED(LET_M); break; // set mags TL
+        case 86: setState(2); setLED(LET_R); break; // set rounds TR
+        case 87: setState(3); setLED(LET_T); break; // set team BR
+        case 89: setState(4); setLED(LET_I); break; // set ID within team BL
         default: setValue(c); break; // It might be a number or junk, test it.
       }
       
   }
 
 void gameHit(int device, int command){
+
+  if (device > 0) {
+    Serial.println("Enemy hit!");
+  }
+  else {
+    Serial.println("Simulated hit!");
+  }
 
   request_track(4);
   digitalWrite(vibePin, HIGH);
@@ -330,7 +355,11 @@ void gameHit(int device, int command){
 
 }
 
-void grazeHit(){} // TODO: What happens if you're grazed
+void grazeHit(){ // Just buzz a bit, nothing more.
+  digitalWrite(vibePin, HIGH);
+  delay(300);
+  digitalWrite(vibePin, LOW);
+} 
 
 void request_track(byte track){
   byte out1 = track & 4;
@@ -434,16 +463,30 @@ byte reverse(byte input){
 
 void toggleArmed(){
   if(armed){
-    delay(1000);
+    delay(500);
     armed=false; digitalWrite(armedPin, LOW);
     request_track(7);
   }
   else{
-    delay(1000);
+    delay(500);
     armed=true; digitalWrite(armedPin, HIGH);
     request_track(6);
   }
+  setLED(LET_A);
   delay(1000); // Ensure there's time for the music
+  if(armed){
+  myFireCode = buildNECCommand(team,1); // Refreshes the fire code in case of team changes.
+  reloadChamber(); // Refreshes the rounds remaining on the LED.
+  } 
+}
+
+void toggleFriendly(){
+  if(friendlyFire){
+    friendlyFire = false;
+  }
+  else{
+    friendlyFire = true;
+  }
 }
 
 void setState(int s){
@@ -456,8 +499,10 @@ void setValue(int v){
       case 1: magsRemaining = v; roundsRemaining = roundsPerMag; break;
       case 2: roundsPerMag = v; roundsRemaining = roundsPerMag; break;
       case 3: team = v; break;
+      case 4: ID = v; break;
       default: break;
     }
+    setLED(NUMBERS[v]); // Display the input value once it's sanitised.
   }
 }
 
