@@ -190,9 +190,15 @@ void loop() {
   if(Serial.available()){
     char sTemp = Serial.read();
     switch (sTemp){
-      case 'f': if (botherTrigger && armed){botherTrigger = false; fire();}; break;
-      case 'r': if (botherReload && armed){botherReload = false; reloadMag();}; break;
-      default: break;
+      case 'f': if (botherTrigger && armed){botherTrigger = false; fire();}; break; //fire
+      case 'r': if (botherReload && armed){botherReload = false; reloadMag();}; break; //reload
+      case 'a': toggleArmed(); break; //arm or disarm
+      case 'h': gameHit(0,0); break; //simulate a game hit
+      case 'm': setState(1); setLED(LET_M); break;//mags 
+      case 'b': setState(2); setLED(LET_R); break;//bullets (rounds)
+      case 't': setState(3); setLED(LET_T); break;//team
+      case 'i': setState(4); setLED(LET_I); break;//id
+      default: setValue(atoi(sTemp)); break; //value is checked for sanity in setValue. 
     }
   }
 
