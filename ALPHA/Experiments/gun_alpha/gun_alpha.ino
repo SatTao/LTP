@@ -177,7 +177,7 @@ void loop() {
       request_track(0);
       adminHit(c);
     }
-    if ( (d>0) && (d<10) && (((int)d!=team) || friendlyFire) && ok){ // TODO THIS MAY BE DANGEROUS CASTING TO INT
+    if ( (d>0) && (d<10) && ((int(d)!=team) || friendlyFire) && ok){ // TODO THIS MAY BE DANGEROUS CASTING TO INT
       gameHit(d, c); 
     }
     if (!ok){
@@ -188,17 +188,18 @@ void loop() {
   }
 
   if(Serial.available()){
-    char sTemp = Serial.read();
-    switch (sTemp){
-      case 'f': if (botherTrigger && armed){botherTrigger = false; fire();}; break; //fire
-      case 'r': if (botherReload && armed){botherReload = false; reloadMag();}; break; //reload
-      case 'a': toggleArmed(); break; //arm or disarm
-      case 'h': gameHit(0,0); break; //simulate a game hit
-      case 'm': setState(1); setLED(LET_M); break;//mags 
-      case 'b': setState(2); setLED(LET_R); break;//bullets (rounds)
-      case 't': setState(3); setLED(LET_T); break;//team
-      case 'i': setState(4); setLED(LET_I); break;//id
-      default: setValue(atoi(sTemp)); break; //value is checked for sanity in setValue. 
+    int sTemp_as_int = Serial.read();
+    Serial.println(":->");
+    switch (sTemp_as_int){
+      case 102: if (botherTrigger && armed){botherTrigger = false; fire();} break; //fire, f
+      case 114: if (botherReload && armed){botherReload = false; reloadMag();} break; //reload, r
+      case 97: toggleArmed(); break; //arm or disarm, a
+      case 104: gameHit(0,0); break; //simulate a game hit, h
+      case 109: setState(1); setLED(LET_M); break;//mags, m
+      case 98: setState(2); setLED(LET_R); break;//bullets (rounds), b
+      case 116: setState(3); setLED(LET_T); break;//team, t
+      case 105: setState(4); setLED(LET_I); break;//id, i
+      default: setValue(sTemp_as_int); break; //value is checked for sanity in setValue. 
     }
   }
 
