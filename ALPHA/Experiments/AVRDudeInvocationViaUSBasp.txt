@@ -1,2 +1,2 @@
-C:\Users\User\Documents\Arduino\arduino-1.0.1\hardware/tools/avr/bin/avrdude -CC:\Users\User\Documents\Arduino\arduino-1.0.1\hardware/tools/avr/etc/avrdude.conf -v -v -v -v -patmega328p -cusbasp -Pusb -Uflash:w:C:\Users\User\AppData\Local\Temp\build5493068625083587920.tmp\gun_alpha.cpp.hex:i -U lfuse:w:0xe2:m -U hfuse:w:0xd8:m -U efuse:w:0xfd:m -B50 -F
+C:\Users\User\Documents\Arduino\arduino-1.0.1\hardware/tools/avr/bin/avrdude -CC:\Users\User\Documents\Arduino\arduino-1.0.1\hardware/tools/avr/etc/avrdude.conf -v -v -v -v -patmega328p -cusbasp -Pusb -Uflash:w:C:\Users\User\AppData\Local\Temp\build8841103464646191431.tmp\MusicIC.cpp.hex:i -U lfuse:w:0xe2:m -U hfuse:w:0xd8:m -U efuse:w:0xfd:m -B50 -F
 

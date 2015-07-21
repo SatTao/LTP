@@ -25,6 +25,7 @@ void loop() {
     byte c = 0; byte d = 0;
     boolean ok = extractNEC(&d, &c, results.value);
     Serial.println(results.value, HEX);
+    Serial.println(results.value, BIN);
     Serial.print("OK?:\t\t"); Serial.println(ok);
     Serial.print("Device code:\t"); Serial.println(d);
     Serial.print("Command code:\t"); Serial.println(c);

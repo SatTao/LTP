@@ -188,9 +188,9 @@ void loop() {
   }
 
   if(Serial.available()){
-    int sTemp_as_int = Serial.read();
+    byte sTemp_as_byte = Serial.read();
     Serial.println(":->");
-    switch (sTemp_as_int){
+    switch (sTemp_as_byte){
       case 102: if (botherTrigger && armed){botherTrigger = false; fire();} break; //fire, f
       case 114: if (botherReload && armed){botherReload = false; reloadMag();} break; //reload, r
       case 97: toggleArmed(); break; //arm or disarm, a
@@ -199,7 +199,8 @@ void loop() {
       case 98: setState(2); setLED(LET_R); break;//bullets (rounds), b
       case 116: setState(3); setLED(LET_T); break;//team, t
       case 105: setState(4); setLED(LET_I); break;//id, i
-      default: setValue(sTemp_as_int); break; //value is checked for sanity in setValue. 
+      case 115: reportState(); break; // report the state of the weapon, s
+      default: setValue(sTemp_as_byte); break; //value is checked for sanity in setValue. 
     }
   }
 
@@ -353,10 +354,11 @@ void gameHit(int device, int command){
     Serial.println("Simulated hit!");
   }
 
-  request_track(4);
+  request_track(HIT);
   digitalWrite(vibePin, HIGH);
-  animate(BEENHIT,10,200); // Gives roughly 2 second delay.
+  animate(BEENHIT,10,100); // Gives roughly 1 second delay.
   digitalWrite(vibePin, LOW);
+  setLED(NUMBERS[roundsRemaining]);
 
   // TODO Add reaction to grenade blasts
 
@@ -482,7 +484,8 @@ void toggleArmed(){
   setLED(LET_A);
   delay(1000); // Ensure there's time for the music
   if(armed){
-  myFireCode = buildNECCommand(team,1); // Refreshes the fire code in case of team changes.
+    byte byteteam=team;
+  myFireCode = buildNECCommand(byteteam,B00000001); // Refreshes the fire code in case of team changes.
   reloadChamber(); // Refreshes the rounds remaining on the LED.
   } 
 }
@@ -501,6 +504,9 @@ void setState(int s){
 }
 
 void setValue(int v){
+  if ((v>48) && (v<58)){ // Must be an ascii representation of number. Reassign it to a real value.
+    v-=48; // Hacky, converts from ascii code to integer.
+  }
   if ((v >= 0) && (v < 10)) { // Then it is valid
     switch(adminState){
       case 1: magsRemaining = v; roundsRemaining = roundsPerMag; break;
@@ -511,6 +517,19 @@ void setValue(int v){
     }
     setLED(NUMBERS[v]); // Display the input value once it's sanitised.
   }
+  else{Serial.println("ALERT invalid value");}
+}
+
+void reportState(){
+  //Report the state of the gun in its entirety
+  Serial.println("Weapon Status:");
+  Serial.print("Armed?\t:\t"); Serial.println(armed);
+  Serial.print("roundsPerMag\t:\t"); Serial.println(roundsPerMag);
+  Serial.print("roundsRemaining\t:\t"); Serial.println(roundsRemaining);
+  Serial.print("magsRemaining\t:\t"); Serial.println(magsRemaining);
+  Serial.print("Team\t:\t"); Serial.println(team);
+  Serial.print("ID\t:\t"); Serial.println(ID);   
+
 }
 
 // End
